@@ -43,6 +43,16 @@ fn main() {
     fb.set_foreground_color(0xFFFFFF);
     fb.draw_polygon(&verticespol2);
     
+    let verticespol3 = vec![
+        Vec3::new(377.0, 249.0, 0.0),
+        Vec3::new(411.0, 197.0, 0.0),
+        Vec3::new(436.0, 249.0, 0.0),
+    ];
+
+    fb.set_foreground_color(0xFF0000);
+    fb.fill_polygon(&verticespol3);
+    fb.set_foreground_color(0xFFFFFF);
+    fb.draw_polygon(&verticespol3);
 
     fb.render_buffer("filled_polygon.bmp").unwrap();
 }
