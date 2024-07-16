@@ -6,10 +6,10 @@ use nalgebra_glm::Vec3;
 use crate::framebuffer::Framebuffer;
 
 fn main() {
-    let mut fb = Framebuffer::new(500, 500);
+    let mut fb = Framebuffer::new(800, 600);
     fb.clear();
 
-    fb.set_background_color(0xFFFFFF);
+    fb.set_background_color(0xccc2ff);
     fb.set_foreground_color(0x000000);
 
     let vertices = vec![
@@ -25,8 +25,11 @@ fn main() {
         Vec3::new(193.0, 383.0, 0.0),
     ];
     
-    fb.draw_polygon(&vertices);
+    fb.set_foreground_color(0xFFFF00);
     fb.fill_polygon(&vertices);
+    fb.set_foreground_color(0xFFFFFF);
+    fb.draw_polygon(&vertices);
+    
 
     fb.render_buffer("filled_polygon.bmp").unwrap();
 }
