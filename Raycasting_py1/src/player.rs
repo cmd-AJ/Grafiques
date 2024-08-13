@@ -5,11 +5,12 @@ use minifb::{Key, Window};
 pub struct Player{
     pub pos: Vec2,
     pub a: f32,
+    pub fov: f32
 }
 
 pub fn process_events(window: &Window, player: &mut Player){
-    const MOVE_SPEED:f32 = 5.0;
-    const ROTATION_SPEED:f32 = PI/20.0;
+    const MOVE_SPEED:f32 = 3.0;
+    const ROTATION_SPEED:f32 = PI/80.0;
 
     if window.is_key_down(Key::Left) {
         player.a -= ROTATION_SPEED
@@ -25,6 +26,7 @@ pub fn process_events(window: &Window, player: &mut Player){
     if window.is_key_down(Key::Down) {
         player.pos.y = player.pos.y - MOVE_SPEED * player.a.sin();
         player.pos.x = player.pos.x - MOVE_SPEED * player.a.cos();
-        
     }
+    
+
 }
