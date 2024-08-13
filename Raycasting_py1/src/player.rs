@@ -1,12 +1,27 @@
-use std::f32::consts::PI;
+use std::{f32::consts::PI, sync::Arc};
 use gilrs::{Axis, Button, Gilrs, Event};
 use nalgebra_glm::Vec2;
-use minifb::{Key, Window};
+use minifb::{Key, MouseButton, Window, WindowOptions};
+use crate::music::AudioPlayer;
 
 pub struct Player {
     pub pos: Vec2,
     pub a: f32,
     pub fov: f32,
+}
+
+pub struct GameState {
+    prev_mouse_x: f32,
+    prev_mouse_y: f32,
+}
+
+impl GameState {
+    pub fn new() -> Self {
+        GameState {
+            prev_mouse_x: 0.0,
+            prev_mouse_y: 0.0,
+        }
+    }
 }
 
 pub fn process_events(
@@ -15,21 +30,34 @@ pub fn process_events(
     maze: &Vec<Vec<char>>,
     block_size: usize,
     gilrs: &mut Gilrs,
+    game_state: &mut GameState,
 ) {
     const MOVE_SPEED: f32 = 3.0;
     const ROTATION_SPEED: f32 = PI / 80.0;
-    const MOUSE_SENSITIVITY: f32 = 0.001;
+    const MOUSE_SENSITIVITY: f32 = 0.01;
+
+     // Handle mouse movement
+     let (mouse_x, mouse_y) = window.get_mouse_pos(minifb::MouseMode::Clamp).unwrap_or((0.0, 0.0));
+     // Calculate mouse movement delta
+     let mouse_delta_x = (mouse_x - game_state.prev_mouse_x) * MOUSE_SENSITIVITY;
+    
+     // Update player's angle based on mouse movement
+     player.a -= -mouse_delta_x;
+ 
+     // Update previous mouse position
+     game_state.prev_mouse_x = mouse_x;
+     game_state.prev_mouse_y = mouse_y;
 
     let mut new_pos = player.pos;
-
-    if window.is_key_down(Key::Left) {
+    
+    if window.is_key_down(Key::A) {
         player.a -= ROTATION_SPEED;
     }
-    if window.is_key_down(Key::Right) {
+    if window.is_key_down(Key::D) {
         player.a += ROTATION_SPEED;
     }
 
-    if window.is_key_down(Key::Up) {
+    if window.is_key_down(Key::W) {
         new_pos.x += MOVE_SPEED * player.a.cos();
         new_pos.y += MOVE_SPEED * player.a.sin();
 
@@ -37,13 +65,26 @@ pub fn process_events(
             player.pos = new_pos;
         }
     }
-    if window.is_key_down(Key::Down) {
+    if window.is_key_down(Key::S) {
         new_pos.x -= MOVE_SPEED * player.a.cos();
         new_pos.y -= MOVE_SPEED * player.a.sin();
 
         if !is_colliding_with_wall(&new_pos, maze, block_size) {
             player.pos = new_pos;
         }
+    }
+
+    if window.is_key_pressed(Key::NumPad4, minifb::KeyRepeat::No) {
+        player.a = 0.0;
+    }
+    if window.is_key_pressed(Key::NumPad6, minifb::KeyRepeat::No) {
+        player.a = PI;
+    }
+    if window.is_key_pressed(Key::NumPad2, minifb::KeyRepeat::No) {
+        player.a = 1.5 * PI;
+    }
+    if window.is_key_pressed(Key::NumPad8, minifb::KeyRepeat::No) {
+        player.a = 0.5 * PI;
     }
 
 
@@ -109,4 +150,6 @@ pub fn process_events(
             _ => false,
         }
     }
+
+    
 }

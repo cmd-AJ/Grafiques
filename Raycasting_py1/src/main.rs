@@ -7,7 +7,7 @@ use framebuffer::Framebuffer;
 mod render;
 use render::load_maze;
 mod player;
-use player::{Player, process_events};
+use player::{process_events, GameState, Player};
 mod castray;
 use castray::{cast_ray, Intersect};
 use once_cell::sync::Lazy;
@@ -202,22 +202,47 @@ fn render_enemies(framebuffer: &mut Framebuffer, player: &Player, z_buffer: &mut
     }
 }
 
-fn render_ui(framebuffer: &mut Framebuffer){
+fn render_ui(framebuffer: &mut Framebuffer, time: f32) {
     let ui_width = 320 as u32;
     let ui_height = 320 as u32;
-    let ui_x = ((framebuffer.width as f32 /2.0 + 100.0) - (ui_width as f32 /2.0)) as u32;
+    let ui_x = ((framebuffer.width as f32 / 2.0 + 100.0) - (ui_width as f32 / 2.0)) as u32;
     let ui_y = (framebuffer.height as f32 - ui_height as f32) as u32;
-    
-    for x in ui_x..(ui_x + ui_width){
-        for y in ui_y..(ui_y + ui_height){
-            
+
+    // Calculate the color interpolation factor based on time
+    let t = (time.sin() + 1.0) / 2.0;
+
+    // Interpolate between the two colors
+    let r1 = 0xF9 as f32;
+    let g1 = 0x00 as f32;
+    let b1 = 0x00 as f32;
+
+    let r2 = 0xD6 as f32;
+    let g2 = 0x7E as f32;
+    let b2 = 0x1D as f32;
+
+    let r = ((r1 * (1.0 - t)) + (r2 * t)) as u8;
+    let g = ((g1 * (1.0 - t)) + (g2 * t)) as u8;
+    let b = ((b1 * (1.0 - t)) + (b2 * t)) as u8;
+    let interpolated_color = (r as u32) << 16 | (g as u32) << 8 | (b as u32);
+
+    for x in ui_x..(ui_x + ui_width) {
+        for y in ui_y..(ui_y + ui_height) {
             let tx = x - ui_x;
             let ty = y - ui_y;
 
-            let color = PLAYER.get_pixel_color(tx, ty);
-            framebuffer.set_foreground_color(color);
-            if color != 0xF500FE {
-                    framebuffer.point(x as usize, y as usize);
+            let pixel_color = PLAYER.get_pixel_color(tx, ty);
+
+            // Shift the color if it's the target color
+            let color_to_draw = if pixel_color == 0xF90000 {
+                interpolated_color
+            } else {
+                pixel_color
+            };
+
+            // Apply the color, ignoring the unwanted color 0xF500FC
+            if pixel_color != 0xf500fe {
+                framebuffer.set_foreground_color(color_to_draw);
+                framebuffer.point(x as usize, y as usize);
             }
         }
     }
@@ -253,19 +278,32 @@ fn render_minimap(framebuffer: &mut Framebuffer, player: &Player, scale: usize) 
     framebuffer.point(player_x, player_y);
 }
 
+// fn draw_menu(framebuffer: &mut Framebuffer, selected_index: usize) {
+//     let menu_options = ["level1\n", "level2\n", "Quit\n"];
+//     let start_x = 100;
+//     let start_y = 100;
+//     let font_size = 20;
+//     let line_height = font_size + SPACINGLINE; // Adjust line height including spacing
+
+//     for (i, option) in menu_options.iter().enumerate() {
+//         let y = start_y + i * line_height;
+//         let color = if i == selected_index { 0xFFFF00 } else { 0xFFFFFF }; // Yellow for selected
+//         draw_text(framebuffer, start_x, y, option, color, SPACINGLINE);
+//     }
+// }
+
+
 
 fn main() {
     let window_width = 1300;
     let window_height = 900;
-
     let framebuffer_width = 1300;
     let framebuffer_height = 900;
-
     let frame_delay = Duration::from_millis(0);
-    let mut gilrs = Gilrs::new().unwrap();
 
-    let mut framebuffer = framebuffer::Framebuffer::new(framebuffer_width, framebuffer_height);
-    
+    let mut gilrs = Gilrs::new().unwrap();
+    let mut game_state = GameState::new();
+    let mut framebuffer = Framebuffer::new(framebuffer_width, framebuffer_height);
     let audioplay = Arc::new(AudioPlayer::new("assets/jb.mp3"));
     audioplay.clone().play_in_background();
 
@@ -278,67 +316,94 @@ fn main() {
     window.update();
 
     framebuffer.set_background_color(0x6b6565);
-    let mut player = Player{
-        pos: Vec2::new(150.0,150.0),
-        a:PI/3.0,
-        fov:PI/3.0
+
+    let mut player = Player {
+        pos: Vec2::new(150.0, 150.0),
+        a: PI / 3.0,
+        fov: PI / 3.0,
     };
 
     let mut last_time = Instant::now();
     let mut frame_count = 0;
+    let mut time = 0.0;
+
+    let mut menu_visible = true;
+    let mut selected_option = 0;
+
 
     while window.is_open() {
-
         frame_count += 1;
-        
-        
-        // Listen to inputs
-        let mut mode = "3D";
-        if window.is_key_down(Key::Escape) {
-            break;
-        }
-        if window.is_key_down(Key::M) {
-            
-            audioplay.clone().stop_in_background();
-        }
-        
-        if window.is_key_down(Key::O)  {
-            mode = if mode == "2D" { "3D"} else { "2D" };
-        }
-        process_events(&window, &mut player, &load_maze("./labterinto.txt"), 69, &mut gilrs );
-        framebuffer.clear();
+        time += 0.05;
 
-        if mode == "2D" {
-            render2d(&mut framebuffer, &player);
-        }
-        else {
-            let mut z_buffer = vec![f32::INFINITY; framebuffer.width];
-            render3d(&mut framebuffer, &player, &mut z_buffer);
-            render_enemies(&mut framebuffer, &player, &mut z_buffer);
-            render_ui(&mut framebuffer);
-            render_minimap(&mut framebuffer,&player, 5);
-        }
+        if menu_visible {
+            // Render the menu
+            framebuffer.clear();
+            // draw_menu(&mut framebuffer, selected_option);
+            window.update_with_buffer(&framebuffer.buffer, framebuffer_width, framebuffer_height).unwrap();
 
-        // Calculate FPS every second
-        let now = Instant::now();
-        if now.duration_since(last_time).as_secs() >= 1 {
-            let fps = frame_count;
-            frame_count = 0;
-            last_time = now;
+            // Handle menu input
+            if window.is_key_down(Key::Down) {
+                selected_option = (selected_option + 1) % 3;
+            } else if window.is_key_down(Key::Up) {
+                selected_option = (selected_option + 2) % 3;
+            } else if window.is_key_down(Key::Enter) {
+                match selected_option {
+                    0 => {
+                        menu_visible = false; // Start the game
+                    }
+                    1 => {
+                        // Open options (if implemented)
+                    }
+                    2 => {
+                        break; // Quit
+                    }
+                    _ => {}
+                }
+            }
+        } else {
+            // Game loop
+            if window.is_key_down(Key::Escape) {
+                break;
+            }
 
-            // Update the window title with FPS
-            let title = format!("VG and LCalibre - FPS: {}", fps);
-            window.set_title(&title);
+            if window.is_key_down(Key::M) {
+                audioplay.clone().stop_in_background();
+            }
+
+            if window.is_key_down(Key::O) {
+                // Toggle mode
+            }
+
+            process_events(&window, &mut player, &load_maze("./labterinto.txt"), 69, &mut gilrs, &mut game_state);
+            framebuffer.clear();
+
+            let mode = "3D"; // Replace with actual mode logic
+            if mode == "2D" {
+                render2d(&mut framebuffer, &player);
+            } else {
+                let mut z_buffer = vec![f32::INFINITY; framebuffer.width];
+                render3d(&mut framebuffer, &player, &mut z_buffer);
+                render_enemies(&mut framebuffer, &player, &mut z_buffer);
+                render_ui(&mut framebuffer, time as f32);
+                render_minimap(&mut framebuffer, &player, 5);
+            }
+
+            // Calculate FPS every second
+            let now = Instant::now();
+            if now.duration_since(last_time).as_secs() >= 1 {
+                let fps = frame_count;
+                frame_count = 0;
+                last_time = now;
+
+                let title = format!("VG and LCalibre - FPS: {}", fps);
+                window.set_title(&title);
+            }
+
+            window
+                .update_with_buffer(&framebuffer.buffer, framebuffer_width, framebuffer_height)
+                .unwrap();
         }
-
-        // Update the window with the framebuffer contents
-        window
-            .update_with_buffer(&framebuffer.buffer, framebuffer_width, framebuffer_height)
-            .unwrap();
 
         std::thread::sleep(frame_delay);
     }
-
-    
 }
-
