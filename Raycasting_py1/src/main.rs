@@ -1,3 +1,4 @@
+use gilrs::Gilrs;
 use minifb::{Key, Window, WindowOptions};
 use nalgebra_glm::{distance, Vec2};
 use std::{f32::consts::PI, sync::Arc, time::Duration};
@@ -9,13 +10,14 @@ mod player;
 use player::{Player, process_events};
 mod castray;
 use castray::{cast_ray, Intersect};
-mod controller;
 use once_cell::sync::Lazy;
 mod texture;
 use texture::Texture;
 mod music;
 use music::AudioPlayer;
 use rodio::{Decoder, OutputStream, Sink};
+use std::{time::Instant}; // Add this import
+
 
 static WALL1: Lazy<Arc<Texture>> = Lazy::new(|| Arc::new(Texture::new("assets/cornfields.jpg")));
 static JB1: Lazy<Arc<Texture>> = Lazy::new(|| Arc::new(Texture::new("assets/JB1.png")));
@@ -41,7 +43,7 @@ fn cell_coloring(cell:char) -> u32{
         '+' => 0xFF1155,
         '-' => 0x221155,
         '|' => 0x00FF00,
-        'g' => 0xFF1155,
+        'g' => 0xF1F10F,
         _ => default_color
     }
 }
@@ -223,16 +225,32 @@ fn render_ui(framebuffer: &mut Framebuffer){
 
 fn render_minimap(framebuffer: &mut Framebuffer, player: &Player, scale: usize) {
     let maze = load_maze("./labterinto.txt");
-    let block_size = 100 / scale;
+    let block_size = 69 / scale;
 
+    // Define the minimap area dimensions and position based on framebuffer size
+    let minimap_width = framebuffer.width / 5; // Example: Minimap width is a quarter of framebuffer width
+    let minimap_height = framebuffer.height / 5; // Example: Minimap height is a quarter of framebuffer height
+
+    // Fill the minimap area with white color
+    framebuffer.set_foreground_color(0xFFFFFF); // White color
+    for x in 0..(minimap_width-15 as usize) {
+        for y in 0..(minimap_height-15 as usize) {
+            framebuffer.point(x, y);
+        }
+    }
+
+    // Draw the maze on the minimap
     for row in 0..maze.len() {
         for col in 0..maze[row].len() {
             draw_cell(framebuffer, col * block_size, row * block_size, block_size, maze[row][col]);
         }
     }
 
-    framebuffer.set_foreground_color(0xFF0000);
-    framebuffer.point((player.pos.x as usize) / scale, (player.pos.y as usize) / scale);
+    // Draw the player's position on the minimap
+    framebuffer.set_foreground_color(0xFF0000); // Red color for player position
+    let player_x = (player.pos.x as usize) / scale;
+    let player_y = (player.pos.y as usize) / scale;
+    framebuffer.point(player_x, player_y);
 }
 
 
@@ -244,6 +262,7 @@ fn main() {
     let framebuffer_height = 900;
 
     let frame_delay = Duration::from_millis(0);
+    let mut gilrs = Gilrs::new().unwrap();
 
     let mut framebuffer = framebuffer::Framebuffer::new(framebuffer_width, framebuffer_height);
     
@@ -265,7 +284,12 @@ fn main() {
         fov:PI/3.0
     };
 
+    let mut last_time = Instant::now();
+    let mut frame_count = 0;
+
     while window.is_open() {
+
+        frame_count += 1;
         
         
         // Listen to inputs
@@ -281,7 +305,7 @@ fn main() {
         if window.is_key_down(Key::O)  {
             mode = if mode == "2D" { "3D"} else { "2D" };
         }
-        process_events(&window, &mut player);
+        process_events(&window, &mut player, &load_maze("./labterinto.txt"), 69, &mut gilrs );
         framebuffer.clear();
 
         if mode == "2D" {
@@ -292,6 +316,19 @@ fn main() {
             render3d(&mut framebuffer, &player, &mut z_buffer);
             render_enemies(&mut framebuffer, &player, &mut z_buffer);
             render_ui(&mut framebuffer);
+            render_minimap(&mut framebuffer,&player, 5);
+        }
+
+        // Calculate FPS every second
+        let now = Instant::now();
+        if now.duration_since(last_time).as_secs() >= 1 {
+            let fps = frame_count;
+            frame_count = 0;
+            last_time = now;
+
+            // Update the window title with FPS
+            let title = format!("VG and LCalibre - FPS: {}", fps);
+            window.set_title(&title);
         }
 
         // Update the window with the framebuffer contents
