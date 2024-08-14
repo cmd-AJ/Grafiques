@@ -25,14 +25,6 @@ impl AudioPlayer {
         }
     }
 
-    pub fn play(&self) {
-        self.sink.lock().unwrap().play();
-    }
-
-    pub fn stop(&self) {
-        self.sink.lock().unwrap().stop();
-    }
-
     pub fn play_in_background(self: Arc<Self>) {
         let sink = Arc::clone(&self.sink);
         thread::spawn(move || {

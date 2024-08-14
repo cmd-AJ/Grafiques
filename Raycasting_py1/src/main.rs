@@ -1,8 +1,8 @@
 use gilrs::Gilrs;
 use minifb::{Key, Window, WindowOptions};
-use nalgebra_glm::{distance, Vec2};
+use nalgebra_glm::Vec2;
 use rusttype::{point, Font, Scale};
-use std::{f32::consts::PI, sync::Arc, thread::sleep, time::Duration};
+use std::{f32::consts::PI, sync::Arc, time::Duration};
 mod framebuffer;
 use framebuffer::Framebuffer;
 mod render;
@@ -10,20 +10,19 @@ use render::load_maze;
 mod player;
 use player::{process_events, GameState, Player};
 mod castray;
-use castray::{cast_ray, Intersect};
+use castray::cast_ray;
 use once_cell::sync::Lazy;
 mod texture;
 use texture::Texture;
 mod music;
 use music::AudioPlayer;
-use rodio::{Decoder, OutputStream, Sink};
-use std::{time::Instant};
+use std::time::Instant;
 
 
 static WALL1: Lazy<Arc<Texture>> = Lazy::new(|| Arc::new(Texture::new("assets/cornfields.jpg")));
 static JB1: Lazy<Arc<Texture>> = Lazy::new(|| Arc::new(Texture::new("assets/JB1.png")));
 static JB2: Lazy<Arc<Texture>> = Lazy::new(|| Arc::new(Texture::new("assets/JB2.png")));
-static door: Lazy<Arc<Texture>> = Lazy::new(|| Arc::new(Texture::new("assets/doors.png")));
+static DOOR: Lazy<Arc<Texture>> = Lazy::new(|| Arc::new(Texture::new("assets/doors.png")));
 static PLAYER: Lazy<Arc<Texture>> = Lazy::new(|| Arc::new(Texture::new("assets/mirror.png")));
 
 
@@ -34,7 +33,7 @@ fn cell_texture_coloring(cell:char, tx:u32, ty:u32) -> u32{
         '+' => WALL1.get_pixel_color(tx, ty),
         '-' => WALL1.get_pixel_color(tx, ty),
         '|' => WALL1.get_pixel_color(tx, ty),
-        'g' => door.get_pixel_color(tx, ty),
+        'g' => DOOR.get_pixel_color(tx, ty),
         _ => default_color
     }
 }
@@ -114,7 +113,7 @@ fn render3d(framebuffer: &mut Framebuffer, player: &Player,z_buffer: &mut[f32], 
         }
     }
 
-    let hw = framebuffer.width as f32 / 2.0;
+    // let hw = framebuffer.width as f32 / 2.0;
     let hh = framebuffer.height as f32 / 2.0;
 
     framebuffer.set_foreground_color(0xF500F5);

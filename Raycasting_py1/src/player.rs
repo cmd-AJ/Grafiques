@@ -1,8 +1,7 @@
-use std::{f32::consts::PI, sync::Arc};
+use std::f32::consts::PI;
 use gilrs::{Axis, Button, Gilrs, Event};
 use nalgebra_glm::Vec2;
-use minifb::{Key, MouseButton, Window, WindowOptions};
-use crate::music::AudioPlayer;
+use minifb::{Key, Window};
 
 pub struct Player {
     pub pos: Vec2,
