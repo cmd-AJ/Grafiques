@@ -32,7 +32,7 @@ pub fn cast_ray(
 
         let hitx = x - i * block_size;
         let hity = y - j * block_size;
-        let mut maxhit = hity;
+        let mut maxhit = hity;   
 
         if 1 < hitx && hitx < block_size - 1{
             maxhit = hitx

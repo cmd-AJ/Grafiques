@@ -33,8 +33,10 @@ pub fn process_events(
     game_state: &mut GameState,
 ) {
     const MOVE_SPEED: f32 = 3.0;
+
     const ROTATION_SPEED: f32 = PI / 80.0;
     const MOUSE_SENSITIVITY: f32 = 0.01;
+    const TWO_PI: f32 = PI * 2.0;
 
      // Handle mouse movement
      let (mouse_x, mouse_y) = window.get_mouse_pos(minifb::MouseMode::Clamp).unwrap_or((0.0, 0.0));
@@ -56,6 +58,8 @@ pub fn process_events(
     if window.is_key_down(Key::D) {
         player.a += ROTATION_SPEED;
     }
+
+    player.a = player.a.rem_euclid(TWO_PI);
 
     if window.is_key_down(Key::W) {
         new_pos.x += MOVE_SPEED * player.a.cos();

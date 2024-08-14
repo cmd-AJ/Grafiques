@@ -1,7 +1,8 @@
 use gilrs::Gilrs;
 use minifb::{Key, Window, WindowOptions};
 use nalgebra_glm::{distance, Vec2};
-use std::{f32::consts::PI, sync::Arc, time::Duration};
+use rusttype::{point, Font, Scale};
+use std::{f32::consts::PI, sync::Arc, thread::sleep, time::Duration};
 mod framebuffer;
 use framebuffer::Framebuffer;
 mod render;
@@ -16,11 +17,13 @@ use texture::Texture;
 mod music;
 use music::AudioPlayer;
 use rodio::{Decoder, OutputStream, Sink};
-use std::{time::Instant}; // Add this import
+use std::{time::Instant};
 
 
 static WALL1: Lazy<Arc<Texture>> = Lazy::new(|| Arc::new(Texture::new("assets/cornfields.jpg")));
 static JB1: Lazy<Arc<Texture>> = Lazy::new(|| Arc::new(Texture::new("assets/JB1.png")));
+static JB2: Lazy<Arc<Texture>> = Lazy::new(|| Arc::new(Texture::new("assets/JB2.png")));
+static door: Lazy<Arc<Texture>> = Lazy::new(|| Arc::new(Texture::new("assets/doors.png")));
 static PLAYER: Lazy<Arc<Texture>> = Lazy::new(|| Arc::new(Texture::new("assets/mirror.png")));
 
 
@@ -31,7 +34,7 @@ fn cell_texture_coloring(cell:char, tx:u32, ty:u32) -> u32{
         '+' => WALL1.get_pixel_color(tx, ty),
         '-' => WALL1.get_pixel_color(tx, ty),
         '|' => WALL1.get_pixel_color(tx, ty),
-        'g' => WALL1.get_pixel_color(tx, ty),
+        'g' => door.get_pixel_color(tx, ty),
         _ => default_color
     }
 }
@@ -63,9 +66,9 @@ fn draw_cell(framebuffer: &mut Framebuffer, xo: usize, yo: usize, block_size: us
 }
 
 
-fn render2d(framebuffer: &mut Framebuffer, player: &Player){
-    let maze = load_maze("./labterinto.txt");
-    let block_size = 69;
+fn render2d(framebuffer: &mut Framebuffer, player: &Player, pathlab: &str){
+    let maze = load_maze(pathlab);
+    let block_size = 70;
 
     for row in 0..maze.len(){
         for col in 0..maze[row].len(){
@@ -85,9 +88,9 @@ fn render2d(framebuffer: &mut Framebuffer, player: &Player){
     
 }
 
-fn render3d(framebuffer: &mut Framebuffer, player: &Player,z_buffer: &mut[f32]){
-    let maze = load_maze("./labterinto.txt");
-    let block_size = 69;
+fn render3d(framebuffer: &mut Framebuffer, player: &Player,z_buffer: &mut[f32], path:&str){
+    let maze = load_maze(path);
+    let block_size = 70;
     let num_rays = framebuffer.width;
 
     for i in 0..framebuffer.width{
@@ -136,69 +139,125 @@ fn render3d(framebuffer: &mut Framebuffer, player: &Player,z_buffer: &mut[f32]){
             framebuffer.set_foreground_color(color);
             framebuffer.point(i, y)
         }
+        
     }
 
-   
+
 
 
 }
 
-fn render_enemy(framebuffer: &mut Framebuffer, player: &Player, pos:&Vec2, z_buffer: &mut[f32]){
-    let sprite_a = (pos.y - player.pos.y).atan2(pos.x - player.pos.x);
-    
-    if sprite_a < 0.0 {
-        return;
+
+fn render_enemy(framebuffer: &mut Framebuffer, player: &Player, pos: &Vec2, z_buffer: &mut [f32]) {
+    let sprite_a = (pos.y - player.pos.y).atan2(pos.x - player.pos.x) - player.a;
+
+    if sprite_a.abs() > player.fov / 2.0 {
+        return; // Skip rendering if the enemy is outside the player's field of view
     }
+
     let sprite_d = ((player.pos.x - pos.x).powi(2) + (player.pos.y - pos.y).powi(2)).sqrt();
-    // let sprite_d = distance(player, p);
 
     if sprite_d < 20.0 {
-        return;
+        return; // Skip if the enemy is too close
     }
 
     let screenheight = framebuffer.height as f32;
     let screenwidth = framebuffer.width as f32;
 
-    
     let sprite_size = (screenheight / sprite_d) * 100.0;
-    let start_y = (screenheight as f32 / 2.0) - (sprite_size /2.0 );
-    let start_x = (sprite_a - player.a) * (screenheight / player.fov) + (screenwidth as f32 / 2.0) - (sprite_size /2.0 );
+    let start_y = (screenheight / 2.0) - (sprite_size / 2.0);
+    let start_x = (sprite_a * (screenwidth / player.fov)) + (screenwidth / 2.0) - (sprite_size / 2.0);
 
     let end_x = (start_x + sprite_size).min(framebuffer.width as f32) as usize;
     let end_y = (start_y + sprite_size).min(framebuffer.height as f32) as usize;
     let start_x = start_x.max(0.0) as usize;
     let start_y = start_y.max(0.0) as usize;
 
-    if end_x <= 0 {
+    if end_x <= 0 || start_x >= framebuffer.width {
         return;
     }
-    
 
-    if  start_x < framebuffer.width && sprite_d < z_buffer[start_x] {
-    for x in start_x..end_x{
-            for y in start_y..end_y{
-                let tx = ((x - start_x ) * 330 / sprite_size as usize) as u32;
-                let ty = ((y - start_y ) * 330 / sprite_size as usize) as u32;
+    for x in start_x..end_x {
+        if sprite_d < z_buffer[x] {
+            for y in start_y..end_y {
+                let tx = ((x - start_x) as f32 * 330.0 / sprite_size) as u32;
+                let ty = ((y - start_y) as f32 * 330.0 / sprite_size) as u32;
                 let color = JB1.get_pixel_color(tx, ty);
-                framebuffer.set_foreground_color(color);
                 if color != 0xf500ff {
+                    framebuffer.set_foreground_color(color);
                     framebuffer.point(x, y);
                 }
-                z_buffer[x] = sprite_d;
             }
+            z_buffer[x] = sprite_d;
         }
     }
 }
 
+fn render_enemy2(framebuffer: &mut Framebuffer, player: &Player, pos: &Vec2, z_buffer: &mut [f32]) {
+    let sprite_a = (pos.y - player.pos.y).atan2(pos.x - player.pos.x) - player.a;
+
+    if sprite_a.abs() > player.fov / 2.0 {
+        return; // Skip rendering if the enemy is outside the player's field of view
+    }
+
+    let sprite_d = ((player.pos.x - pos.x).powi(2) + (player.pos.y - pos.y).powi(2)).sqrt();
+
+    if sprite_d < 20.0 {
+        return; // Skip if the enemy is too close
+    }
+
+    let screenheight = framebuffer.height as f32;
+    let screenwidth = framebuffer.width as f32;
+
+    let sprite_size = (screenheight / sprite_d) * 60.0;
+    let start_y = (screenheight / 2.0) - (sprite_size / 2.0);
+    let start_x = (sprite_a * (screenwidth / player.fov)) + (screenwidth / 2.0) - (sprite_size / 2.0);
+
+    let end_x = (start_x + sprite_size).min(framebuffer.width as f32) as usize;
+    let end_y = (start_y + sprite_size).min(framebuffer.height as f32) as usize;
+    let start_x = start_x.max(0.0) as usize;
+    let start_y = start_y.max(0.0) as usize;
+
+    if end_x <= 0 || start_x >= framebuffer.width {
+        return;
+    }
+
+    for x in start_x..end_x {
+        if sprite_d < z_buffer[x] {
+            for y in start_y..end_y {
+                let tx = ((x - start_x) as f32 * 330.0 / sprite_size) as u32;
+                let ty = ((y - start_y) as f32 * 330.0 / sprite_size) as u32;
+                let color = JB2.get_pixel_color(tx, ty);
+                if color != 0xf500ff {
+                    framebuffer.set_foreground_color(color);
+                    framebuffer.point(x, y);
+                }
+            }
+            z_buffer[x] = sprite_d;
+        }
+    }
+}
+
+
 fn render_enemies(framebuffer: &mut Framebuffer, player: &Player, z_buffer: &mut[f32]){
     let enemies = vec![
-        Vec2::new(250.0, 250.0),
-        Vec2::new(600.0, 180.0), //Que tan lejos izquierda
-        Vec2::new(250.0, 600.0), //Que tan lejos derecha 
+        Vec2::new(600.0, 800.0), //Que tan lejos izquierda
+        Vec2::new(800.0, 400.0), //Que tan lejos derecha 
+        Vec2::new(1150.0, 400.0), //Que tan lejos derecha 
     ];
 
     for enemy in enemies{
         render_enemy(framebuffer, &player, &enemy, z_buffer);
+    }
+
+    let enemies = vec![
+        Vec2::new(150.0, 200.0),
+        Vec2::new(350.0, 400.0),
+        Vec2::new(150.0, 700.0)
+    ];
+
+    for enemy in enemies{
+        render_enemy2(framebuffer, &player, &enemy, z_buffer);
     }
 }
 
@@ -248,9 +307,9 @@ fn render_ui(framebuffer: &mut Framebuffer, time: f32) {
     }
 }
 
-fn render_minimap(framebuffer: &mut Framebuffer, player: &Player, scale: usize) {
-    let maze = load_maze("./labterinto.txt");
-    let block_size = 69 / scale;
+fn render_minimap(framebuffer: &mut Framebuffer, player: &Player, scale: usize, pathlab: &str) {
+    let maze = load_maze(pathlab);
+    let block_size = 70 / scale;
 
     // Define the minimap area dimensions and position based on framebuffer size
     let minimap_width = framebuffer.width / 5; // Example: Minimap width is a quarter of framebuffer width
@@ -258,8 +317,8 @@ fn render_minimap(framebuffer: &mut Framebuffer, player: &Player, scale: usize) 
 
     // Fill the minimap area with white color
     framebuffer.set_foreground_color(0xFFFFFF); // White color
-    for x in 0..(minimap_width-15 as usize) {
-        for y in 0..(minimap_height-15 as usize) {
+    for x in 0..(minimap_width as usize) {
+        for y in 0..(minimap_height as usize) {
             framebuffer.point(x, y);
         }
     }
@@ -276,22 +335,130 @@ fn render_minimap(framebuffer: &mut Framebuffer, player: &Player, scale: usize) 
     let player_x = (player.pos.x as usize) / scale;
     let player_y = (player.pos.y as usize) / scale;
     framebuffer.point(player_x, player_y);
+    framebuffer.point(player_x+1, player_y+1);
+    framebuffer.point(player_x+1, player_y);
+    framebuffer.point(player_x, player_y+1);
+
+    //enemigos ejemplo para poner
+    framebuffer.set_foreground_color(0x000000);
+    let x = 100/scale as usize;
+    let why = 420/scale as usize;
+    framebuffer.point(x, why);
+    framebuffer.point(x+1, why+1);
+    framebuffer.point(x+1, why);
+    framebuffer.point(x, why+1);
+
 }
 
-// fn draw_menu(framebuffer: &mut Framebuffer, selected_index: usize) {
-//     let menu_options = ["level1\n", "level2\n", "Quit\n"];
-//     let start_x = 100;
-//     let start_y = 100;
-//     let font_size = 20;
-//     let line_height = font_size + SPACINGLINE; // Adjust line height including spacing
+fn draw_menu(framebuffer: &mut Framebuffer, selected_index: usize) {
+    let font_data = include_bytes!("assets/Roboto-Black.ttf");
+    let font = Font::try_from_bytes(font_data as &[u8]).unwrap();
+    
+    let scale = Scale::uniform(100.0);
+    let v_metrics = font.v_metrics(scale);
 
-//     for (i, option) in menu_options.iter().enumerate() {
-//         let y = start_y + i * line_height;
-//         let color = if i == selected_index { 0xFFFF00 } else { 0xFFFFFF }; // Yellow for selected
-//         draw_text(framebuffer, start_x, y, option, color, SPACINGLINE);
-//     }
-// }
+    let header_text = "Escape from Bravo";
+    let header_x = 300;
+    let header_y = 100; // Adjust as needed
+    let header_color = 0x301934; // White color
 
+    // Draw header text
+    let header_glyphs: Vec<_> = font.layout(header_text, scale, point(header_x as f32, header_y as f32 + v_metrics.ascent)).collect();
+
+    for glyph in header_glyphs {
+        if let Some(bounding_box) = glyph.pixel_bounding_box() {
+            glyph.draw(|x, y, v| {
+                let x = x as i32 + bounding_box.min.x;
+                let y = y as i32 + bounding_box.min.y;
+
+                if x >= 0 && x < framebuffer.width as i32 && y >= 0 && y < framebuffer.height as i32 {
+                    let alpha = (v * 255.0).round() as u8;
+                    if alpha > 0 {
+                        let color = (header_color & 0xFFFFFF) | ((alpha as u32) << 24); // Apply alpha
+                        framebuffer.set_foreground_color(color);
+                        framebuffer.point(x as usize, y as usize);
+                    }
+                }
+            });
+        }
+    }
+
+    let menu_options = vec!["1.Level 1", "2.Level 2", "3.Level 3", "4.Level 4", "5.Quit"];
+    let menu_x = 425;
+    let mut menu_y = 275;
+
+    for (i, option) in menu_options.iter().enumerate() {
+        let color = if i == selected_index {
+            0xFFFF0000 // Red for selected (ARGB)
+        } else {
+            0xFFFFFFFF // White for others (ARGB)
+        };
+
+        let glyphs: Vec<_> = font.layout(option, scale, point(menu_x as f32, menu_y as f32 + v_metrics.ascent)).collect();
+
+        for glyph in glyphs {
+            if let Some(bounding_box) = glyph.pixel_bounding_box() {
+                glyph.draw(|x, y, v| {
+                    let x = x as i32 + bounding_box.min.x;
+                    let y = y as i32 + bounding_box.min.y;
+
+                    if x >= 0 && x < framebuffer.width as i32 && y >= 0 && y < framebuffer.height as i32 {
+                        let alpha = (v * 255.0).round() as u8;
+                        if alpha > 0 {
+                            let color = (color & 0xFFFFFF) | ((alpha as u32) << 24); // Apply alpha
+                            framebuffer.set_foreground_color(color);
+                            framebuffer.point(x as usize, y as usize);
+                        }
+                    }
+                });
+            }
+        }
+
+        menu_y += 90; // Adjust spacing as needed
+    }
+}
+
+fn draw_menucongrat(framebuffer: &mut Framebuffer) {
+    let font_data = include_bytes!("assets/Roboto-Black.ttf");
+    let font = Font::try_from_bytes(font_data as &[u8]).unwrap();
+    
+    let scale = Scale::uniform(40.0);
+    let v_metrics = font.v_metrics(scale);
+
+    let header_text = "You won press escape to try levels or backspace to quit";
+    let header_x = 150;
+    let header_y = 450; // Adjust as needed
+    let header_color = 0x301934; // White color
+
+    // Draw header text
+    let header_glyphs: Vec<_> = font.layout(header_text, scale, point(header_x as f32, header_y as f32 + v_metrics.ascent)).collect();
+
+    for glyph in header_glyphs {
+        if let Some(bounding_box) = glyph.pixel_bounding_box() {
+            glyph.draw(|x, y, v| {
+                let x = x as i32 + bounding_box.min.x;
+                let y = y as i32 + bounding_box.min.y;
+
+                if x >= 0 && x < framebuffer.width as i32 && y >= 0 && y < framebuffer.height as i32 {
+                    let alpha = (v * 255.0).round() as u8;
+                    if alpha > 0 {
+                        let color = (header_color & 0xFFFFFF) | ((alpha as u32) << 24); // Apply alpha
+                        framebuffer.set_foreground_color(color);
+                        framebuffer.point(x as usize, y as usize);
+                    }
+                }
+            });
+        }
+    }
+
+   
+}
+
+
+fn is_near_escape_point(player_pos: Vec2, escape_point: Vec2, radius: f32) -> bool {
+    let distance = (player_pos - escape_point).magnitude();
+    distance < radius
+}
 
 
 fn main() {
@@ -308,7 +475,7 @@ fn main() {
     audioplay.clone().play_in_background();
 
     let mut window = Window::new(
-        "VG and LCalibre",
+        "Escape from Bravo",
         window_width, window_height, WindowOptions::default()
     ).unwrap();
 
@@ -329,32 +496,61 @@ fn main() {
 
     let mut menu_visible = true;
     let mut selected_option = 0;
+    let mut pathlab = "labterinto.txt";
+    let mut escape_point = Vec2::new(600.0, 800.0); // Example escape point
+    let escape_radius = 10.0; // Radius around the escape point
+
+    
 
 
     while window.is_open() {
         frame_count += 1;
         time += 0.05;
+    
 
         if menu_visible {
             // Render the menu
             framebuffer.clear();
-            // draw_menu(&mut framebuffer, selected_option);
+            draw_menu(&mut framebuffer, selected_option);
             window.update_with_buffer(&framebuffer.buffer, framebuffer_width, framebuffer_height).unwrap();
 
             // Handle menu input
-            if window.is_key_down(Key::Down) {
-                selected_option = (selected_option + 1) % 3;
-            } else if window.is_key_down(Key::Up) {
-                selected_option = (selected_option + 2) % 3;
-            } else if window.is_key_down(Key::Enter) {
+            if window.is_key_down(Key::Key1) {
+                selected_option = 0;
+            } else if window.is_key_down(Key::Key2) {
+                selected_option = 1
+            }else if window.is_key_down(Key::Key3) {
+                selected_option = 2
+            } 
+            else if window.is_key_down(Key::Key4) {
+                selected_option = 3
+            } 
+            else if window.is_key_down(Key::Key5) {
+                selected_option = 4
+            } 
+             else if window.is_key_down(Key::Enter) {
                 match selected_option {
                     0 => {
                         menu_visible = false; // Start the game
+                        pathlab = "labterinto.txt";
+                        escape_point = Vec2::new(1200.0, 422.0);
                     }
                     1 => {
-                        // Open options (if implemented)
+                        menu_visible = false; // Start the game
+                        pathlab = "laberinto1.txt";
+                        escape_point = Vec2::new(770.0, 660.0);
                     }
                     2 => {
+                        menu_visible = false; // Start the gam
+                        pathlab = "laberinto2.txt";
+                        escape_point = Vec2::new(100.0, 422.0);
+                    }
+                    3 => {
+                        menu_visible = false; // Start the game
+                        pathlab = "laberinto3.txt";
+                        escape_point =  Vec2::new(100.0, 422.0);
+                    }
+                    4 => {
                         break; // Quit
                     }
                     _ => {}
@@ -363,30 +559,39 @@ fn main() {
         } else {
             // Game loop
             if window.is_key_down(Key::Escape) {
-                break;
+                menu_visible = true;
             }
 
             if window.is_key_down(Key::M) {
                 audioplay.clone().stop_in_background();
             }
 
-            if window.is_key_down(Key::O) {
-                // Toggle mode
-            }
 
-            process_events(&window, &mut player, &load_maze("./labterinto.txt"), 69, &mut gilrs, &mut game_state);
+
+            process_events(&window, &mut player, &load_maze(&pathlab), 70, &mut gilrs, &mut game_state);
             framebuffer.clear();
 
             let mode = "3D"; // Replace with actual mode logic
             if mode == "2D" {
-                render2d(&mut framebuffer, &player);
+                render2d(&mut framebuffer, &player, &pathlab);
             } else {
                 let mut z_buffer = vec![f32::INFINITY; framebuffer.width];
-                render3d(&mut framebuffer, &player, &mut z_buffer);
+                render3d(&mut framebuffer, &player, &mut z_buffer, &pathlab);
                 render_enemies(&mut framebuffer, &player, &mut z_buffer);
                 render_ui(&mut framebuffer, time as f32);
-                render_minimap(&mut framebuffer, &player, 5);
+                render_minimap(&mut framebuffer, &player, 5, &pathlab);
             }
+
+            if is_near_escape_point(player.pos, escape_point, escape_radius) {
+                framebuffer.clear();
+                draw_menucongrat(&mut framebuffer); // Adjust text color and position
+                window.update_with_buffer(&framebuffer.buffer, framebuffer_width, framebuffer_height).unwrap();
+                if window.is_key_down(Key::Backspace) {
+                    break; // Exit the game loop or handle win state
+                }
+                
+            }
+
 
             // Calculate FPS every second
             let now = Instant::now();

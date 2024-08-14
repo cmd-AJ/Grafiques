@@ -25,6 +25,3 @@ impl Texture {
     ((r as u32) << 16) | ((g as u32) << 8) | (b as u32)
   }
 }
-
-//f500ff
-// 100*127
