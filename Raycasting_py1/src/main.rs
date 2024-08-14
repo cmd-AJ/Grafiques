@@ -338,14 +338,14 @@ fn render_minimap(framebuffer: &mut Framebuffer, player: &Player, scale: usize, 
     framebuffer.point(player_x+1, player_y);
     framebuffer.point(player_x, player_y+1);
 
-    //enemigos ejemplo para poner
-    framebuffer.set_foreground_color(0x000000);
-    let x = 100/scale as usize;
-    let why = 420/scale as usize;
-    framebuffer.point(x, why);
-    framebuffer.point(x+1, why+1);
-    framebuffer.point(x+1, why);
-    framebuffer.point(x, why+1);
+    // //enemigos ejemplo para poner
+    // framebuffer.set_foreground_color(0x000000);
+    // let x = 100/scale as usize;
+    // let why = 420/scale as usize;
+    // framebuffer.point(x, why);
+    // framebuffer.point(x+1, why+1);
+    // framebuffer.point(x+1, why);
+    // framebuffer.point(x, why+1);
 
 }
 
