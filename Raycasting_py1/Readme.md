@@ -1,3 +1,1 @@
-[![Now in Android: 55]          // Title
-(https://i.ytimg.com/vi/Hc79sDi3f0U/maxresdefault.jpg)] // Thumbnail
-(https://www.youtube.com/watch?v=Hc79sDi3f0U "Now in Android: 55")    // Video Link
+[<img src="[https://i.ytimg.com/vi/Hc79sDi3f0U/maxresdefault.jpg](https://github.com/cmd-AJ/Grafiques/blob/master/Raycasting_py1/src/Escapefromjonny.png)" width="50%">]([https://www.youtube.com/watch?v=Hc79sDi3f0U "Now in Android: 55](https://youtu.be/TFzcKEBEzn8)")
