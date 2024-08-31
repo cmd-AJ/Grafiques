@@ -46,6 +46,7 @@ fn main() {
     let framebuffer_width = 800;
     let framebuffer_height = 600;
     let frame_delay = Duration::from_millis(16);
+    let fps = 40;
 
     let mut framebuffer = Framebuffer::new(framebuffer_width, framebuffer_height);
     let mut window = Window::new(
