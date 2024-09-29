@@ -1,10 +1,11 @@
 use nalgebra_glm::{Vec3, dot};
-use crate::rayintersect::{Intersect, RayIntersect};
-use crate::material::Material;
+use crate::rayintersect::{Intersect, Material, RayIntersect};
 
 pub struct Sphere {
     pub center: Vec3,
-    pub radius: f32,
+    pub base: f32,
+    pub height: f32,
+    pub depth: f32,
     pub material: Material,
 }
 
@@ -34,7 +35,7 @@ impl Rayintersect for Sphere {
                 let normal = (point - self.center).normalize();
                 let distance = t;
 
-                return Intersect::new( point, normal, distance, self.material);
+                return Intersect::new(distance, self.material);
             }
         }
 

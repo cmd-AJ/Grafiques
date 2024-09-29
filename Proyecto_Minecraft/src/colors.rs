@@ -13,18 +13,23 @@ impl Color {
         Color { r, g, b }
     }
 
+
+    pub  const  fn black() -> Self {
+        Color {r:0, g:0,b:0}
+    }
+
     // Convert color to a hexadecimal representation
     pub fn to_hex(&self) -> u32 {
         ((self.r as u32) << 16) | ((self.g as u32) << 8) | (self.b as u32)
     }
 
+
     // Blend this color with another color
-    pub fn blend(&self, other: &Color, factor: f32) -> Color {
-        let factor = factor.clamp(0.0, 1.0);
+    pub fn blend(&self, other: &Color) -> Color {
         Color {
-            r: (self.r as f32 * (1.0 - factor) + other.r as f32 * factor) as u8,
-            g: (self.g as f32 * (1.0 - factor) + other.g as f32 * factor) as u8,
-            b: (self.b as f32 * (1.0 - factor) + other.b as f32 * factor) as u8,
+            r: (self.r as f32 + other.r as f32 ) as u8,
+            g: (self.g as f32 + other.g as f32 ) as u8,
+            b: (self.b as f32 + other.b as f32 ) as u8,
         }
     }
 

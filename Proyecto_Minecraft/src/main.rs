@@ -3,19 +3,30 @@ mod sphere;
 use colors::Color;
 use sphere::Sphere;
 use minifb::{Key, Window, WindowOptions};
-use std::time::Duration;
+use std::{f32::consts::PI, time::Duration};
 use nalgebra_glm::{normalize, Vec3};
 mod framebuffer;
 use framebuffer::Framebuffer;
 mod castingray;
 mod rayintersect;
 mod colors;
-use rayintersect::{Intersect,RayIntersect,Material};
+use rayintersect::{Intersect,RayIntersect};
+mod material;
+use material::Material;
+mod camera;
+use camera::Camera;
+mod light;
+use light::Light;
+mod reflection;
+mod shadow;
 
-pub fn render(framebuffer: &mut Framebuffer, objects: &[Sphere]) {
+
+pub fn render(framebuffer: &mut Framebuffer, objects: &[Sphere], camera: &Camera, light: &Light) {
     let width = framebuffer.width as f32;
     let height = framebuffer.height as f32;
     let aspect_ratio = width / height;
+    let fov = PI/3.0;
+    let perspective_scale = (fov/2.0).tan();
 
     for y in 0..framebuffer.height {
         for x in 0..framebuffer.width {
@@ -23,15 +34,16 @@ pub fn render(framebuffer: &mut Framebuffer, objects: &[Sphere]) {
             let screen_x = (2.0 * x as f32) / width - 1.0;
             let screen_y = -(2.0 * y as f32) / height + 1.0;
 
-            // Adjust for aspect ratio
-            let adjusted_x = screen_x * aspect_ratio;
+            let screen_x = screen_x * aspect_ratio * perspective_scale;
+            let screen_y = screen_y * perspective_scale;
 
             // Calculate the direction of the ray for this pixel
-            let ray_direction = normalize(&Vec3::new(adjusted_x, screen_y, -1.0));
+            let ray_direction = &Vec3::new(screen_x, screen_y, -1.0).normalize();
+            let rotated_direction = camera.basis_change(&ray_direction);
+
 
             // Cast the ray and get the pixel color
-            let origin = Vec3::new(0.0, 0.0, 0.0); // Camera position
-            let pixel_color = cast_ray(&origin, &ray_direction, objects);
+            let pixel_color = cast_ray(&camera.eye, &rotated_direction, objects, &light);
 
             // Draw the pixel on screen with the returned color
             framebuffer.set_foreground_color(pixel_color.to_hex());
@@ -56,23 +68,34 @@ fn main() {
         WindowOptions::default(),
     ).unwrap();
 
-    let marmle = Material{
-        diffuse: Color::new(250, 250, 250),
-    };
+    let marmle = Material::new(
+        Color::new(250, 250, 250),
+        50.0,
+        [0.3,0.1],
+    );
 
-    let ivory = Material{
-        diffuse: Color::new(2, 0, 5),
-    };
-    let mout = Material{
-        diffuse: Color::new(60, 60, 60),
-    };
+    let ivory = Material::new(
+        Color::new(2, 0, 5),
+        50.0,
+        [0.3,0.1],
+    );
+    // rubber
+    let mout = Material::new(
+        Color::new(60, 60, 60),
+        10.0,
+        [0.9,0.1]
+    );
 
-    let giz = Material{
-        diffuse: Color::new(152, 147, 140)
-    };
-    let griz = Material{
-        diffuse: Color::new(120, 120, 120)
-    };
+    let giz = Material::new(
+        Color::new(152, 147, 140),
+        10.0,
+        [0.9,0.1]
+    );
+    let griz = Material::new(
+       Color::new(120, 120, 120),
+       10.0,
+       [0.9,0.1]
+    );
 
 
     let objects = [
@@ -135,10 +158,43 @@ fn main() {
 
 
     ];
+
+    let light = Light::new(
+        Vec3::new(0.0, 0.0, 5.0)
+        , Color::new(255, 255, 255)
+        , 1.0
+    );
+
+    let mut  camera = Camera::new(
+        Vec3::new(0.1, 0.1, 5.0),
+        Vec3::new(0.0, 0.0, 0.0),
+        Vec3::new(0.0, 1.0, 0.0),
+    );
+
+    let rotation_speed = PI/50.0;
+
    
     while window.is_open() && !window.is_key_down(Key::Escape) {
+
+        if window.is_key_down(Key::Left) {
+            camera.orbit(rotation_speed, 0.0);
+        }
+
+        if window.is_key_down(Key::Right) {
+            camera.orbit(-rotation_speed, 0.0);
+        }
+
+        if window.is_key_down(Key::Up) {
+            camera.orbit(0.0,-rotation_speed);
+        }
+
+        if window.is_key_down(Key::Down) {
+            camera.orbit(0.0, rotation_speed);
+        }
+
+        
         framebuffer.clear();
-        render(&mut framebuffer, &objects);
+        render(&mut framebuffer, &objects, &mut camera, &light);
         window
             .update_with_buffer(&framebuffer.buffer, framebuffer_width, framebuffer_height)
             .unwrap();
