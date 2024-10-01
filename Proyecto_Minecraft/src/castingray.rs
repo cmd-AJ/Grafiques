@@ -32,13 +32,8 @@ pub fn cast_ray(origin: &Vec3, direction: &Vec3, objects: &[Cube], light: &Light
 
     // Get the UV coordinates from the intersected cube
     let (u, v) = intersected_object.unwrap().get_uv(&intersect.point, &intersect.normal);
-
-
-
     // Get the color based on the UV coordinates
     let diffuse_color = intersected_object.unwrap().material.get_diffuse(u, v);
-
-
 
     let light_dir = (light.position - intersect.point).normalize();
     let view_dir = (origin - intersect.point).normalize();

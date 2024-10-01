@@ -1,9 +1,7 @@
 
 use std::sync::Arc;
 
-use once_cell::sync::Lazy;
-
-use crate::{texture::{self, Texture}, Color};
+use crate::{texture::{Texture}, Color};
 
 
 #[derive(Debug, Clone)]

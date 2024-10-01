@@ -1,5 +1,4 @@
 use nalgebra_glm::Vec3;
-use crate::colors::Color;
 use crate::material::Material;
 
 
