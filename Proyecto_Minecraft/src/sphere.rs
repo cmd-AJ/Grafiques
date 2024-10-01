@@ -1,4 +1,6 @@
-use nalgebra_glm::{Vec3, dot};
+use std::f32::consts::PI;
+
+use nalgebra_glm::{dot, normalize, Vec3};
 use crate::rayintersect::{Intersect, RayIntersect};
 use crate::material::Material;
 
@@ -11,6 +13,22 @@ pub struct Sphere {
 pub trait Rayintersect {
     fn ray_intersect(&self, origin: &Vec3, direction: &Vec3) -> Intersect;
 }
+
+impl Sphere {
+    fn get_uv(&self, point: &Vec3) -> (f32, f32){
+
+        let normalized = ( *point - self.center)/ self.radius;
+
+        let theta = (-normalized.y).acos();
+        let phi = (-normalized.z).atan2(normalized.x) + PI;
+
+        let u = phi / (2.0 * PI);
+        let v = theta / PI;
+
+        (u,v)
+
+    }
+} 
 
 impl Rayintersect for Sphere {
     fn ray_intersect(&self, origin: &Vec3, direction: &Vec3) -> Intersect {
@@ -34,7 +52,13 @@ impl Rayintersect for Sphere {
                 let normal = (point - self.center).normalize();
                 let distance = t;
 
-                return Intersect::new( point, normal, distance, self.material);
+                let (u,v)  = if self.material.texture.is_some() {
+                    self.get_uv(&point)                    
+                } else {
+                    (0.0,0.0)
+                };
+
+                return Intersect::new( point, normal, distance, self.material.clone(), u, v);
             }
         }
 

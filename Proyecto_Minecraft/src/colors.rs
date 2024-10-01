@@ -18,6 +18,10 @@ impl Color {
         Color {r:0, g:0,b:0}
     }
 
+    pub  const  fn skybox_color() -> Self {
+        Color {r:141, g:162,b:255}
+    }
+
     // Convert color to a hexadecimal representation
     pub fn to_hex(&self) -> u32 {
         ((self.r as u32) << 16) | ((self.g as u32) << 8) | (self.b as u32)
