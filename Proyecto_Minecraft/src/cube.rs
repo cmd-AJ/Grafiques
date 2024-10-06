@@ -14,9 +14,9 @@ impl RayIntersect for Cube {
         let local_point = *point - self.center;
     
         // Define the scale for the front, back, and bottom faces
-        let front_scale = 0.265; // Scale for front and back faces
+        let front_scale = 0.26; // Scale for front and back faces
         let back_scale = 0.26; // Sc5le for front and back faces
-        let bottom_scale = 0.63; // Scale for bottom face
+        let bottom_scale = 0.26; // Scale for bottom face
         let side_scale = 0.26; // Scale for side faces
     
         if normal.z.abs() > 0.9 {
@@ -31,19 +31,19 @@ impl RayIntersect for Cube {
             let v = (local_point.y + half_size) / self.size * back_scale + 0.70 * (1.0 - back_scale); // Adjusted for back face
             (u, v)
     
-        } else if normal.y.abs() > 0.9 {
+        } else if normal.y.abs() > 0.0 {
             // Top face (Y-axis)
             let u = (local_point.x + half_size) / self.size * front_scale + (1.0 - (front_scale-0.01)) / 2.0; // Adjusted for top face
-            let v = (local_point.z + half_size) / self.size * front_scale - 0.01 * (1.0-front_scale); // Top face
+            let v = (local_point.z + half_size) / self.size * front_scale + 0.7 * (1.0-front_scale); // Top face
             (u, v)
     
-        } else if normal.y.abs() < -0.9 {
+        } else if normal.y.abs() < -0.0 {
             // Bottom face (Y-axis)
             let u = (local_point.x + half_size) / self.size * bottom_scale + (1.0 - bottom_scale) / 2.0; // Adjusted for bottom face
-            let v = (local_point.z + half_size) / self.size * bottom_scale + 0.5 * (1.0 - bottom_scale); // Adjusted for bottom face
+            let v = (local_point.z + half_size) / self.size * bottom_scale + 0.1 * (1.0 - bottom_scale); // Adjusted for bottom face
             (u, v)
     
-        } else if normal.x.abs() > 0.9 {
+        } else if normal.x.abs() > 0.0 {
             // Right face (X-axis)
             let u = (local_point.z + half_size) / self.size * side_scale + 0.5; // Adjusted for right face
             let v = (local_point.y + half_size) / self.size * side_scale + 0.25; // Adjusted for right face

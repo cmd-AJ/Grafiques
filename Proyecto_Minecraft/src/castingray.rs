@@ -37,13 +37,13 @@ pub fn cast_ray(origin: &Vec3, direction: &Vec3, objects: &[Cube], light: &Light
 
     let light_dir = (light.position - intersect.point).normalize();
     let view_dir = (origin - intersect.point).normalize();
-    let intensity = light.intensity;
     let reflect_dir = reflection(&-light_dir, &intersect.normal).normalize();
     let shadow_intensity = cast_shadow(&intersect, light, objects);
     let light_intensity = light.intensity * (1.0 - shadow_intensity);
 
     let diffuse_intensity = intersect.normal.dot(&light_dir).max(0.0);
-    let adjusted_diffuse_color = diffuse_color.adjust_brightness(intersect.material.albedo[0] * (diffuse_intensity * intensity));
+
+    let adjusted_diffuse_color = diffuse_color.adjust_brightness(intersect.material.albedo[0] * (diffuse_intensity * light_intensity));
 
     let specular_intensity = view_dir.dot(&reflect_dir).max(0.0).powf(intersect.material.specular);
     let specular = light.color.adjust_brightness(intersect.material.albedo[1] * specular_intensity * light_intensity);

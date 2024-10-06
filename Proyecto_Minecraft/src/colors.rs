@@ -1,6 +1,6 @@
 // color.rs
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Color {
     pub r: u8,
     pub g: u8,
@@ -30,19 +30,17 @@ impl Color {
 
     // Blend this color with another color
     pub fn blend(&self, other: &Color) -> Color {
-        Color {
-            r: (self.r as f32 + other.r as f32 ) as u8,
-            g: (self.g as f32 + other.g as f32 ) as u8,
-            b: (self.b as f32 + other.b as f32 ) as u8,
-        }
+        let r = (self.r as f32 + other.r as f32).min(255.0) as u8;
+        let g = (self.g as f32 + other.g as f32).min(255.0) as u8;
+        let b = (self.b as f32 + other.b as f32).min(255.0) as u8;
+        Color::new(r, g, b)
     }
 
     // Adjust color brightness
     pub fn adjust_brightness(&self, factor: f32) -> Color {
-        Color {
-            r: ((self.r as f32 * factor).clamp(0.0, 255.0)) as u8,
-            g: ((self.g as f32 * factor).clamp(0.0, 255.0)) as u8,
-            b: ((self.b as f32 * factor).clamp(0.0, 255.0)) as u8,
-        }
+        let r = (self.r as f32 * factor).min(255.0).max(0.0) as u8;
+        let g = (self.g as f32 * factor).min(255.0).max(0.0) as u8;
+        let b = (self.b as f32 * factor).min(255.0).max(0.0) as u8;
+        Color::new(r, g, b)
     }
 }

@@ -2,6 +2,10 @@ use castingray::cast_ray;
 
 use colors::Color;
 
+mod myobjects;
+
+use myobjects::loadobjects;
+
 use minifb::{Key, Window, WindowOptions};
 use nalgebra_glm::Vec3;
 use std::{
@@ -15,7 +19,6 @@ mod castingray;
 mod colors;
 mod material;
 mod rayintersect;
-use material::Material;
 mod camera;
 use camera::Camera;
 mod light;
@@ -24,16 +27,12 @@ mod r_stations;
 mod shadow;
 mod texture;
 use once_cell::sync::Lazy;
-use texture::Texture;
 mod cube;
 use cube::Cube;
 
 
-static COBBLESTONE: Lazy<Arc<Texture>> = Lazy::new(|| Arc::new(Texture::new("assets/acacia.png")));
-static ACACIALOG: Lazy<Arc<Texture>> =
-    Lazy::new(|| Arc::new(Texture::new("assets/log_acacia.png")));
 
-pub fn render(framebuffer: &mut Framebuffer, objects: &[Cube], camera: &Camera, light: &Light) {
+pub fn render(framebuffer: &mut Framebuffer, objects: &[Cube], camera: &Camera, lights: &[Light]) {
     let width = framebuffer.width as f32;
     let height = framebuffer.height as f32;
     let aspect_ratio = width / height;
@@ -54,8 +53,11 @@ pub fn render(framebuffer: &mut Framebuffer, objects: &[Cube], camera: &Camera, 
             let rotated_direction = camera.basis_change(&ray_direction);
 
             // Cast the ray and get the pixel color
-            let pixel_color = cast_ray(&camera.eye, &rotated_direction, objects, &light, 0);
-
+            let mut pixel_color = Color::black();
+            for light in lights {
+                let color_from_light = cast_ray(&camera.eye, &rotated_direction, objects, light, 0);
+                pixel_color = pixel_color.blend(&color_from_light);
+            }
             // Draw the pixel on screen with the returned color
             framebuffer.set_foreground_color(pixel_color.to_hex());
             framebuffer.point(x, y);
@@ -84,56 +86,17 @@ fn main() {
     //reflection (2)
     //albedo (1)
     //refraction 4
-    let marmle = Material::new(Color::new(250, 250, 250), 50.0, [0.3, 0.1, 0.6, 0.0], 0.0);
+   
+    let objects = loadobjects();
 
-    let ivorys = Material::new_with_text(0.0, [1.0, 0.0, 0.0, 0.0], 0.0, COBBLESTONE.clone());
-
-    let snow = Material::new_with_text(0.0, [0.9, 0.0, 0.0, 0.0], 0.0, COBBLESTONE.clone());
-    // rubber
-    let mout = Material::new(Color::new(60, 60, 60), 10.0, [0.9, 0.1, 0.6, 0.0], 0.0);
-
-    let giz = Material::new(
-        Color::new(255, 255, 255),
-        1425.0,
-        [0.0, 10.0, 0.5, 0.5],
-        0.3,
-    );
-
-    let griz = Material::new(Color::new(120, 120, 120), 1.0, [0.9, 0.0, 0.00, 0.0], 0.0);
-
-    let mut objects = Vec::new();
-    let cloned_ivorys = ivorys.clone();
-
-    objects.push(Cube {
-        center: Vec3::new(0.0, 0.0, -2.0),
-        size: 1.0,
-        material: marmle,
-    });
-
-    let grid_size = 3;
-    let spacing = 1.0; // Adjust this to change the distance between cubes
-
-    for row in 0..grid_size {
-        for col in 0..grid_size {
-            for depth in 0..grid_size {
-                objects.push(Cube {
-                    center: Vec3::new(
-                        col as f32 * spacing,
-                        row as f32 * spacing,
-                        -depth as f32 * spacing,
-                    ),
-                    size: 1.0,
-                    material: cloned_ivorys.clone(),
-                });
-            }
-        }
-    }
-
-    let light = Light::new(Vec3::new(-5.0, 0.0, 5.0), Color::new(255, 255, 255), 1.0);
+    let lights = vec![
+        Light::new(Vec3::new(-5.0, 5.0, 5.0), Color::new(255, 0, 0), 1.0),
+  
+    ];
 
     let mut camera = Camera::new(
         Vec3::new(0.1, 0.1, 5.0),
-        Vec3::new(0.0, 0.0, 0.0),
+        Vec3::new(1.0, 0.0, -1.0),
         Vec3::new(0.0, 1.0, 0.0),
         true,
     );
@@ -169,7 +132,7 @@ fn main() {
 
         if camera.check_change() {
             framebuffer.clear();
-            render(&mut framebuffer, &objects, &mut camera, &light);
+            render(&mut framebuffer, &objects, &mut camera, &lights);
         }
 
         window
