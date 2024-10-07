@@ -1,7 +1,7 @@
 
 use std::sync::Arc;
 
-use crate::{texture::{Texture}, Color};
+use crate::{texture::Texture, Color};
 
 
 #[derive(Debug, Clone)]
@@ -45,6 +45,12 @@ impl Material{
         }
     }
 
+    pub fn set_albedo(&mut self, index: usize, value: f32) {
+        if index < self.albedo.len() {
+            self.albedo[index] = value;
+        }
+    }
+
     pub fn get_diffuse(&self, u: f32, v: f32) -> Color {
         if let Some(texture) = &self.texture {
             // Clamp the UV coordinates to the range [0, 1]
@@ -76,7 +82,6 @@ impl Material{
             albedo: [0.0,0.0,0.0,0.0],
             refraction_index:0.0,
             texture: None
-
 
         }
     }

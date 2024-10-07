@@ -18,8 +18,16 @@ impl Color {
         Color {r:0, g:0,b:0}
     }
 
-    pub  const  fn skybox_color() -> Self {
-        Color {r:141, g:162,b:255}
+    pub const fn skybox_color_j() -> Self {
+        Color {r:141, g:162,b:255} // Color for J key
+    }
+
+    pub const fn skybox_color_k() -> Self {
+        Color { r: 213, g: 135, b: 57 } // Color for K key
+    }
+
+    pub const fn skybox_color_l() -> Self {
+        Color { r: 0, g: 0, b: 0 } // Color for L key
     }
 
     // Convert color to a hexadecimal representation
