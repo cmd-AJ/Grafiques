@@ -1,4 +1,5 @@
 use nalgebra_glm::{Mat4, Vec4};
+use crate::triangle;
 use crate::vertex::Vertex;
 use crate::framebuffer::Framebuffer;
 use crate::line::line;
@@ -30,20 +31,19 @@ pub fn render(framebuffer: &mut Framebuffer, uniforms: &Uniforms, vertex_array: 
         })
         .collect();
 
-    // Rasterization Stage: Convert triangles into fragments using the line function
+    // Rasterization Stage: Convert triangles into fragments using triangle rasterization
     let mut fragments = Vec::new();
     for tri in triangles {
-        fragments.extend(line(&tri[0], &tri[1]));
-        fragments.extend(line(&tri[1], &tri[2]));
-        fragments.extend(line(&tri[2], &tri[0]));
+        let triangle_fragments = triangle(&tri[0], &tri[1], &tri[2]); // Ensure you have the triangle function defined
+        fragments.extend(triangle_fragments);
     }
 
-    // Fragment Processing Stage: Write fragments to framebuffer
+    // Fragment Processing Stage: Write fragments to framebuffer with depth testing
     for fragment in fragments {
         let x = fragment.position.x as usize;
         let y = fragment.position.y as usize;
         if x < framebuffer.width && y < framebuffer.height {
-            framebuffer.buffer[y * framebuffer.width + x] = fragment.color.to_hex();
+            framebuffer.point(x, y, fragment.color.to_hex(), fragment.depth); // Use the point method here
         }
     }
 }

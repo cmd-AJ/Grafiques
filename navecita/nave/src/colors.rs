@@ -58,4 +58,11 @@ impl Color {
         let b = (self.b as f32 * factor).min(255.0).max(0.0) as u8;
         Color::new(r, g, b)
     }
+
+    pub fn interpolate(v1: &Color, v2: &Color, v3: &Color, w1: f32, w2: f32, w3: f32) -> Color {
+        let r = (v1.r as f32 * w1 + v2.r as f32 * w2 + v3.r as f32 * w3).round().clamp(0.0, 255.0) as u8;
+        let g = (v1.g as f32 * w1 + v2.g as f32 * w2 + v3.g as f32 * w3).round().clamp(0.0, 255.0) as u8;
+        let b = (v1.b as f32 * w1 + v2.b as f32 * w2 + v3.b as f32 * w3).round().clamp(0.0, 255.0) as u8;
+        Color::new(r, g, b)
+    }
 }
