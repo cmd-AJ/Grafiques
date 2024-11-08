@@ -2,19 +2,20 @@ use colors::Color;
 use fragment::Fragment;
 use minifb::{Key, Window, WindowOptions};
 use nalgebra_glm::{dot, Mat4, Vec3};
-use std::time::Duration;
+use std::{f32::consts::PI, time::Duration};
 use vertex::Vertex;
 mod framebuffer;
 use framebuffer::Framebuffer;
 mod colors;
 mod fragment;
-mod line;
 mod uniform;
 mod vertex;
 use uniform::{create_model_matrix, create_perspective_matrix, create_view_matrix, create_viewport_matrix, render, Uniforms};
 mod obj;
 mod vertexshader;
 use obj::Obj;
+mod camera;
+use camera::Camera;
 
 fn calculate_bounding_box(v1: &Vec3, v2: &Vec3, v3: &Vec3) -> (i32, i32, i32, i32) {
     let min_x = v1.x.min(v2.x).min(v3.x).floor() as i32;
@@ -76,7 +77,7 @@ pub fn triangle(v1: &Vertex, v2: &Vertex, v3: &Vertex) -> Vec<Fragment> {
                 // Interpolate depth
                 let depth = a.z * w1 + b.z * w2 + c.z * w3;
 
-                fragments.push(Fragment::new(x as f32, y as f32, lit_color, depth));
+                fragments.push(Fragment::new(x as f32, y as f32, lit_color, depth, normal, intensity));
             }
         }
     }
@@ -108,6 +109,13 @@ fn main() {
     let scale_factor =  1.0f32;
     let mut rotation_angles = Vec3::new(0.0, 0.0, 0.0);
 
+    let mut camera = Camera::new(
+        Vec3::new(0.0, 0.0, 5.0),
+        Vec3::new(0.0, 0.0, 0.0),
+        Vec3::new(0.0, 1.0, 0.0),
+        false
+    );
+
 
     //CAMARA
     let mut eye = Vec3::new(0.0, 0.0, 5.0);
@@ -116,12 +124,12 @@ fn main() {
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
 
-        handle_input(&window, &mut eye, &mut center);
+        handle_input(&window, &mut eye, &mut camera);
 
         framebuffer.clear(); // Clear the framebuffer for each frame
 
         let model_matrix = create_model_matrix(translation, scale_factor, rotation_angles);
-        let view_matrix = create_view_matrix(eye, center, up); // Adjust for camera if needed
+        let view_matrix = create_view_matrix(camera.eye, camera.center, camera.up); // Adjust for camera if needed
         let projection_matrix =  create_perspective_matrix(window_width as f32, window_height as f32); // Set up perspective projection
         let viewport_matrix = create_viewport_matrix(window_width as f32, window_height as f32);
 
@@ -143,42 +151,48 @@ fn main() {
     }
 }
 
-fn handle_input(window: &Window, eye: &mut Vec3, center: &mut Vec3) {
-    let move_speed = 1.0;
-
-    // Move the center (WASD keys)
-    if window.is_key_down(Key::W) {
-        center.y -= move_speed; // Move center up
-    }
-    if window.is_key_down(Key::S) {
-        center.y += move_speed; // Move center down
-    }
-    if window.is_key_down(Key::A) {
-        center.x -= move_speed; // Move center left
-    }
-    if window.is_key_down(Key::D) {
-        center.x += move_speed; // Move center right
-    }
-
-    // Move the eye (arrow keys)
-    if window.is_key_down(Key::Up) {
-        eye.y -= move_speed; // Move eye up
-    }
-    if window.is_key_down(Key::Down) {
-        eye.y += move_speed; // Move eye down
-    }
+fn handle_input(window: &Window, eye: &mut Vec3, camera: &mut Camera) {
+    let movement_speed = 1.0;
+    let rotation_speed = PI/50.0;
+    let zoom_speed = 0.1;
+   
+    //  camera orbit controls
     if window.is_key_down(Key::Left) {
-        eye.x -= move_speed; // Move eye left
+      camera.orbit(rotation_speed, 0.0);
     }
     if window.is_key_down(Key::Right) {
-        eye.x += move_speed; // Move eye right
+      camera.orbit(-rotation_speed, 0.0);
+    }
+    if window.is_key_down(Key::W) {
+      camera.orbit(0.0, -rotation_speed);
+    }
+    if window.is_key_down(Key::S) {
+      camera.orbit(0.0, rotation_speed);
     }
 
-    // Optionally, add controls for moving the camera forward/backward
+    // Camera movement controls
+    let mut movement = Vec3::new(0.0, 0.0, 0.0);
+    if window.is_key_down(Key::A) {
+      movement.x -= movement_speed;
+    }
+    if window.is_key_down(Key::D) {
+      movement.x += movement_speed;
+    }
     if window.is_key_down(Key::Q) {
-        eye.z -= move_speed; // Move eye closer
+      movement.y += movement_speed;
     }
     if window.is_key_down(Key::E) {
-        eye.z += move_speed; // Move eye farther
+      movement.y -= movement_speed;
+    }
+    if movement.magnitude() > 0.0 {
+      camera.move_center(movement);
+    }
+
+    // Camera zoom controls
+    if window.is_key_down(Key::Up) {
+      camera.zoom(zoom_speed);
+    }
+    if window.is_key_down(Key::Down) {
+      camera.zoom(-zoom_speed);
     }
 }

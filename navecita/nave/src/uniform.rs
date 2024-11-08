@@ -5,6 +5,7 @@ use crate::triangle;
 use crate::vertex::Vertex;
 use crate::framebuffer::Framebuffer;
 use crate::vertexshader::vertex_shader;
+use crate::fragment::fragment_shader;
 
 pub struct Uniforms {
     pub model_matrix: Mat4,
@@ -44,7 +45,8 @@ pub fn render(framebuffer: &mut Framebuffer, uniforms: &Uniforms, vertex_array: 
         let x = fragment.position.x as usize;
         let y = fragment.position.y as usize;
         if x < framebuffer.width && y < framebuffer.height {
-            let color = fragment.color.to_hex();
+            let shaded_color = fragment_shader(&fragment, &uniforms);
+            let color = shaded_color.to_hex();
             framebuffer.point(x, y, color, fragment.depth);
         }
     }
