@@ -3,6 +3,7 @@ use fastnoise_lite::{FastNoiseLite, NoiseType};
 use fragment::Fragment;
 use minifb::{Key, Window, WindowOptions};
 use nalgebra_glm::{dot, Mat4, Vec3};
+use core::time;
 use std::{f32::consts::PI, time::Duration};
 use vertex::Vertex;
 mod framebuffer;
@@ -108,6 +109,11 @@ fn main() {
     let window_height = 600;
     let mut framebuffer = Framebuffer::new(window_width, window_height);
     let start_time = std::time::Instant::now();
+    let mut static_pattern = Framebuffer::generate_static_pattern(window_width, window_height, 0.001);
+    
+
+   
+    
 
     let mut window = Window::new(
         "Mother Zeta Fallut 3",
@@ -121,7 +127,7 @@ fn main() {
     let mut vertex_array = obj.get_vertex_array();
 
     let mut translation = Vec3::new(0.0, 0.0, 0.0);
-    let scale_factor = 1.0f32;
+    let mut scale_factor = 1.0f32;
     let mut rotation_angles = Vec3::new(0.0, 0.0, 0.0);
 
     let mut camera = Camera::new(
@@ -141,6 +147,7 @@ fn main() {
     while window.is_open() && !window.is_key_down(Key::Escape) {
         let elapsed = start_time.elapsed();
         let time = elapsed.as_secs_f32() as u32; //
+
 
         let movement_speed = 1.0;
         let rotation_speed = PI / 50.0;
@@ -180,14 +187,17 @@ fn main() {
 
         // Camera zoom controls
         if window.is_key_down(Key::Up) {
+            static_pattern = Framebuffer::generate_static_pattern(window_width, window_height, 0.001);
             camera.zoom(zoom_speed);
         }
         if window.is_key_down(Key::Down) {
+            static_pattern = Framebuffer::generate_static_pattern(window_width, window_height, 0.001);
             camera.zoom(-zoom_speed);
         }
 
         //SATURN
         if window.is_key_down(Key::NumPad2) {
+            scale_factor = 1.0f32;
             obj = Obj::load("./assets/sphere-1.obj").expect("Failed to load .obj file");
             vertex_array = obj.get_vertex_array();
             blend_type = "2";
@@ -195,6 +205,7 @@ fn main() {
 
         //SOL
         if window.is_key_down(Key::NumPad1) {
+            scale_factor = 1.0f32;
             obj = Obj::load("./assets/SATURN.obj").expect("Failed to load .obj file");
             vertex_array = obj.get_vertex_array();
             blend_type = "1";
@@ -202,18 +213,21 @@ fn main() {
 
         //neptuno
         if window.is_key_down(Key::NumPad3) {
+            scale_factor = 1.0f32;
             obj = Obj::load("./assets/sphere-1.obj").expect("Failed to load .obj file");
             vertex_array = obj.get_vertex_array();
             blend_type = "3";
         }
 
         if window.is_key_down(Key::NumPad4) {
+            scale_factor = 1.0f32;
             obj = Obj::load("./assets/rockos.obj").expect("Failed to load .obj file");
             vertex_array = obj.get_vertex_array();
             blend_type = "4";
         }
 
         if window.is_key_down(Key::NumPad5) {
+            scale_factor = 1.0f32;
             obj = Obj::load("./assets/sphere-1.obj").expect("Failed to load .obj file");
             vertex_array = obj.get_vertex_array();
             blend_type = "5";
@@ -221,6 +235,7 @@ fn main() {
 
 
         if window.is_key_down(Key::NumPad6) {
+            scale_factor = 1.0f32;
             obj = Obj::load("./assets/sphere-1.obj").expect("Failed to load .obj file");
             vertex_array = obj.get_vertex_array();
             blend_type = "6";
@@ -228,13 +243,23 @@ fn main() {
 
 
         if window.is_key_down(Key::NumPad7) {
+            scale_factor = 1.0f32;
             obj = Obj::load("./assets/sphere-1.obj").expect("Failed to load .obj file");
+            vertex_array = obj.get_vertex_array();
+            blend_type = "7";
+        }
+
+        if window.is_key_down(Key::NumPad8) {
+            scale_factor = 0.2f32;
+            obj = Obj::load("./assets/xae21.obj").expect("Failed to load .obj file");
             vertex_array = obj.get_vertex_array();
             blend_type = "7";
         }
 
 
         framebuffer.clear(); // Clear the framebuffer for each frame
+
+        framebuffer.apply_static_pattern(&static_pattern);
 
         let model_matrix = create_model_matrix(translation, scale_factor, rotation_angles);
         let view_matrix = create_view_matrix(camera.eye, camera.center, camera.up); // Adjust for camera if needed
