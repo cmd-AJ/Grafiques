@@ -1,7 +1,6 @@
 use std::f32::consts::PI;
 
-use crate::fragment::{combining_eath, combining_nubes_shader, fragment_shader, neon_light_shader, random_color_shader, static_pattern_shader, sun_shader, survivingmars
-};
+use crate::fragment::{combining_eath, combining_nubes_shader, fragment_shader, random_color_shader, static_pattern_shader, sun_shader, survivingmars};
 use crate::framebuffer::Framebuffer;
 use crate::triangle;
 use crate::vertex::Vertex;

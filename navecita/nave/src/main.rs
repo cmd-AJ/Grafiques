@@ -2,7 +2,7 @@ use colors::Color;
 use fastnoise_lite::{FastNoiseLite, NoiseType};
 use fragment::Fragment;
 use minifb::{Key, Window, WindowOptions};
-use nalgebra_glm::{dot, Mat4, Vec3};
+use nalgebra_glm::{dot, Mat4, Vec2, Vec3};
 use core::time;
 use std::{f32::consts::PI, time::Duration};
 use vertex::Vertex;
@@ -21,6 +21,9 @@ mod vertexshader;
 use obj::Obj;
 mod camera;
 use camera::Camera;
+mod normal_map;
+mod object;
+
 
 fn calculate_bounding_box(v1: &Vec3, v2: &Vec3, v3: &Vec3) -> (i32, i32, i32, i32) {
     let min_x = v1.x.min(v2.x).min(v3.x).floor() as i32;
@@ -50,6 +53,8 @@ pub fn triangle(v1: &Vertex, v2: &Vertex, v3: &Vertex) -> Vec<Fragment> {
         v2.transformed_position,
         v3.transformed_position,
     );
+
+    let (t1, t2, t3) = (v1.tex_coords, v2.tex_coords, v3.tex_coords);
 
     let (min_x, min_y, max_x, max_y) = calculate_bounding_box(&a, &b, &c);
 
@@ -84,6 +89,9 @@ pub fn triangle(v1: &Vertex, v2: &Vertex, v3: &Vertex) -> Vec<Fragment> {
 
                 let vertex_position = v1.position * w1 + v2.position * w2 + v3.position * w3;
 
+                let tex_u = t1.x * w1 + t2.x * w2 + t3.x * w3;
+                let tex_v = t1.y * w1 + t2.y * w2 + t3.y * w3;
+
                 fragments.push(Fragment::new(
                     x as f32,
                     y as f32,
@@ -92,6 +100,7 @@ pub fn triangle(v1: &Vertex, v2: &Vertex, v3: &Vertex) -> Vec<Fragment> {
                     normal,
                     intensity,
                     vertex_position,
+                    Vec2::new(tex_u, tex_v)
                 ));
             }
         }
@@ -123,11 +132,11 @@ fn main() {
     )
     .unwrap();
 
-    let mut obj = Obj::load("./assets/sphere-1.obj").expect("Failed to load .obj file");
+    let mut obj = Obj::load("./assets/xae21.obj").expect("Failed to load .obj file");
     let mut vertex_array = obj.get_vertex_array();
 
-    let mut translation = Vec3::new(0.0, 0.0, 0.0);
-    let mut scale_factor = 1.0f32;
+    let mut translation = Vec3::new(0.0, -0.0, 0.0);
+    let mut scale_factor = 0.2f32;
     let mut rotation_angles = Vec3::new(0.0, 0.0, 0.0);
 
     let mut camera = Camera::new(
@@ -154,12 +163,7 @@ fn main() {
         let zoom_speed = 0.1;
 
         //  camera orbit controls
-        if window.is_key_down(Key::Left) {
-            camera.orbit(rotation_speed, 0.0);
-        }
-        if window.is_key_down(Key::Right) {
-            camera.orbit(-rotation_speed, 0.0);
-        }
+       
         if window.is_key_down(Key::W) {
             camera.orbit(0.0, -rotation_speed);
         }
@@ -171,6 +175,7 @@ fn main() {
         let mut movement = Vec3::new(0.0, 0.0, 0.0);
         if window.is_key_down(Key::A) {
             movement.x -= movement_speed;
+            
         }
         if window.is_key_down(Key::D) {
             movement.x += movement_speed;
@@ -189,14 +194,40 @@ fn main() {
         if window.is_key_down(Key::Up) {
             static_pattern = Framebuffer::generate_static_pattern(window_width, window_height, 0.001);
             camera.zoom(zoom_speed);
+             if translation.z <= 0.0 {
+                translation.z -= zoom_speed;  
+            }
+            camera.center = translation;
         }
         if window.is_key_down(Key::Down) {
             static_pattern = Framebuffer::generate_static_pattern(window_width, window_height, 0.001);
             camera.zoom(-zoom_speed);
+
+
+
+            if translation.z <= 0.0 {
+                translation.z += zoom_speed;  
+            }
+
+            camera.center = translation;
         }
+
+        if window.is_key_down(Key::Left) {
+            camera.orbit(rotation_speed, 0.0);
+            
+           
+            camera.center = translation;
+        }
+        if window.is_key_down(Key::Right) {
+            camera.orbit(-rotation_speed, 0.0);
+
+            camera.center = translation;
+        }
+
 
         //SATURN
         if window.is_key_down(Key::NumPad2) {
+
             scale_factor = 1.0f32;
             obj = Obj::load("./assets/sphere-1.obj").expect("Failed to load .obj file");
             vertex_array = obj.get_vertex_array();
@@ -255,6 +286,12 @@ fn main() {
             vertex_array = obj.get_vertex_array();
             blend_type = "7";
         }
+
+        if window.is_key_down(Key::P) { //Periferico
+            let direction = (camera.center - camera.eye).normalize();
+            camera.eye = direction * 50.0;
+        }
+
 
 
         framebuffer.clear(); // Clear the framebuffer for each frame

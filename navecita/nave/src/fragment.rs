@@ -3,7 +3,6 @@
 use std::f32::consts::PI;
 
 use nalgebra_glm::{fract, sin, Vec2, Vec3};
-use rand::{random, rngs::StdRng, Rng, SeedableRng};
 use crate::{colors::Color, uniform::{self, Uniforms}};
 
 pub struct Fragment {
@@ -13,17 +12,19 @@ pub struct Fragment {
     pub normal: Vec3,
     pub intensity: f32,
     pub vertex_position: Vec3,
+    pub tex_coords: Vec2,
 }
 
 impl Fragment {
-    pub fn new(x: f32, y: f32, color: Color, depth: f32, normal: Vec3, intensity:f32, vertex_position: Vec3,) -> Self {
+    pub fn new(x: f32, y: f32, color: Color, depth: f32, normal: Vec3, intensity:f32, vertex_position: Vec3,tex_coords: Vec2,) -> Self {
         Fragment {
             position: Vec2::new(x, y),
             color,
             depth,
             normal,
             intensity,
-            vertex_position
+            vertex_position,
+            tex_coords
 
         }
     }
@@ -299,49 +300,11 @@ pub fn glow_shader(fragment: &Fragment) -> Color {
 
 }
 
-
-
-pub fn core_shader(fragment: &Fragment) -> Color{
-    let y = fragment.vertex_position.y;
-    let stripe_width = 0.2;
-    let core_size = 0.02;
-
-    let distance_to_center = (y % stripe_width - stripe_width/2.0).abs();
-    let core_intensity = if distance_to_center < core_size {1.0} else {0.0};
-
-    Color::new(
-        (0.8 * core_intensity * 255.0) as u8, 
-        (0.9 * core_intensity * 255.0) as u8, 
-        (core_intensity * 255.0) as u8
-    )
-}
-
-
 pub fn background_shader_sun(_fragment: &Fragment) -> Color{
 
     Color::new(209, 64, 9)
 
 }
-
-pub fn background_shader(_fragment: &Fragment) -> Color{
-
-    Color::new(209, 64, 9)
-
-}
-
-
-pub fn neon_light_shader(fragment: &Fragment) -> Color{
-    let background = background_shader(fragment);
-    let glow = glow_shader(fragment);
-    let core = core_shader(fragment);
-
-    let blended_glow = background.blend_screen(&glow);
-
-    blended_glow.blend_add(&core)
-
-}
-
-
 
 pub fn random_color_shader(fragment: &Fragment, uniforms: &Uniforms) -> Color{
 
