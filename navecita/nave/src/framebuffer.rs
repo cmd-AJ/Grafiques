@@ -1,5 +1,7 @@
 use  rand::Rng;
 
+use crate::colors::Color;
+
 pub struct Framebuffer {
     pub buffer: Vec<u32>,
     pub z_buffer: Vec<f32>, // Z-buffer for depth
@@ -78,4 +80,31 @@ impl Framebuffer {
 
         pattern
     }
+
+
+    pub fn line(&mut self, x1: i32, y1: i32, x2: i32, y2: i32, color: u32, depth: f32) {
+        let dx = (x2 - x1).abs();
+        let dy = (y2 - y1).abs();
+        let sx = if x1 < x2 { 1 } else { -1 };
+        let sy = if y1 < y2 { 1 } else { -1 };
+        let mut err = dx - dy;
+
+        let mut x = x1;
+        let mut y = y1;
+
+        while x != x2 || y != y2 {
+            self.point(x as usize, y as usize, color, depth);
+
+            let e2 = 2 * err;
+            if e2 > -dy {
+                err -= dy;
+                x += sx;
+            }
+            if e2 < dx {
+                err += dx;
+                y += sy;
+            }
+        }
+    }
+
 }

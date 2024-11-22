@@ -6,6 +6,7 @@ use crate::Vec3;
 use crate::uniform::Uniforms;
 use crate::normal_map::{NormalMap, with_normal_map};
 
+
 pub fn vertex_shader(vertex: &Vertex, uniforms: &Uniforms) -> Vertex {
   // Transform position
   let position = Vec4::new(

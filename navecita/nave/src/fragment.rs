@@ -4,6 +4,7 @@ use std::f32::consts::PI;
 
 use nalgebra_glm::{fract, sin, Vec2, Vec3};
 use crate::{colors::Color, uniform::{self, Uniforms}};
+use crate::vertexshader::calculate_tangent_lighting;
 
 pub struct Fragment {
     pub position: Vec2,
@@ -308,6 +309,8 @@ pub fn background_shader_sun(_fragment: &Fragment) -> Color{
 
 pub fn random_color_shader(fragment: &Fragment, uniforms: &Uniforms) -> Color{
 
+
+    let intensity = calculate_tangent_lighting(fragment);
     let seed = uniforms.time as usize;
 
     let galaxy_colors = vec![
@@ -319,7 +322,7 @@ pub fn random_color_shader(fragment: &Fragment, uniforms: &Uniforms) -> Color{
 
     let random_color = galaxy_colors[seed % galaxy_colors.len()];
 
-    random_color.adjust_brightness(fragment.intensity)
+    random_color.adjust_brightness(intensity/0.1)
 
 }
 
